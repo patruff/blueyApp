@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bluey Episode Manager</title>
+    <title>Bluey Episode Manager - with YouTube Queue API</title>
     <style>
         body {
             font-family: 'Comic Sans MS', cursive, sans-serif;
@@ -13,7 +13,7 @@
             color: #333;
         }
         .container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
             background-color: white;
             border-radius: 15px;
@@ -23,7 +23,17 @@
         h1 {
             color: #0081C6;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+        }
+        .main-content {
+            display: flex;
+            gap: 20px;
+        }
+        .episode-section {
+            flex: 1;
+        }
+        .player-section {
+            flex: 1;
         }
         .controls {
             display: flex;
@@ -46,8 +56,10 @@
         }
         .episodes {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 15px;
+            max-height: 500px;
+            overflow-y: auto;
         }
         .episode {
             background-color: #FFD54F;
@@ -62,12 +74,15 @@
             transform: scale(1.05);
             background-color: #FFC107;
         }
+        .episode.queued {
+            background-color: #AED581;
+        }
         .episode-name {
             font-weight: bold;
             margin-bottom: 5px;
         }
         .episode-info {
-            font-size: 14px;
+            font-size: 12px;
             color: #666;
         }
         .add-form {
@@ -105,12 +120,14 @@
             display: none;
         }
         .queue-section {
-            margin-top: 30px;
+            margin-top: 20px;
         }
         .queue-list {
             background-color: #E8F5E9;
             border-radius: 10px;
             padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
         }
         .queue-item {
             display: flex;
@@ -122,8 +139,17 @@
         .queue-item:last-child {
             border-bottom: none;
         }
+        .queue-actions {
+            display: flex;
+            gap: 5px;
+        }
         .remove-btn {
             background-color: #F44336;
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+        .play-btn {
+            background-color: #4CAF50;
             padding: 5px 10px;
             font-size: 14px;
         }
@@ -132,61 +158,121 @@
             justify-content: space-between;
             margin-top: 15px;
         }
+        .feedback-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #0081C6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .feedback-message.show {
+            opacity: 1;
+        }
+        #player-container {
+            width: 100%;
+            background-color: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        .video-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+        .url-note {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Bluey Episode Finder</h1>
+        <h1>Bluey Episode Manager</h1>
         
-        <div class="controls">
-            <input type="text" id="search-input" placeholder="Search episodes...">
-            <select id="season-filter">
-                <option value="all">All Seasons</option>
-                <option value="1">Season 1</option>
-                <option value="2">Season 2</option>
-                <option value="3">Season 3</option>
-            </select>
-        </div>
-        
-        <div id="episodes-container" class="episodes">
-            <!-- Episodes will be populated here -->
-        </div>
-        
-        <div class="toggle-button">
-            <button id="toggle-form">Add New Episode</button>
-        </div>
-        
-        <div id="add-form" class="add-form hidden">
-            <h2>Add New Episode</h2>
-            <div class="form-group">
-                <label for="episode-name">Episode Name:</label>
-                <input type="text" id="episode-name" placeholder="e.g. Octopus">
-            </div>
-            <div class="form-group">
-                <label for="episode-url">YouTube URL:</label>
-                <input type="url" id="episode-url" placeholder="https://www.youtube.com/watch?v=...">
-            </div>
-            <div class="form-group">
-                <label for="episode-season">Season:</label>
-                <input type="number" id="episode-season" min="1" max="3" value="1">
-            </div>
-            <div class="form-group">
-                <label for="episode-number">Episode Number:</label>
-                <input type="number" id="episode-number" min="1" value="1">
-            </div>
-            <button id="save-episode">Save Episode</button>
-        </div>
-        
-        <div class="queue-section">
-            <h2>Current Queue</h2>
-            <div id="queue-container" class="queue-list">
-                <div id="queue-items">
-                    <!-- Queue items will appear here -->
-                    <div class="empty-queue">No episodes in queue yet</div>
+        <div class="main-content">
+            <div class="episode-section">
+                <div class="controls">
+                    <input type="text" id="search-input" placeholder="Search episodes...">
+                    <select id="season-filter">
+                        <option value="all">All Seasons</option>
+                        <option value="1">Season 1</option>
+                        <option value="2">Season 2</option>
+                        <option value="3">Season 3</option>
+                    </select>
                 </div>
-                <div class="queue-controls">
-                    <button id="clear-queue">Clear Queue</button>
-                    <button id="play-all">Play All</button>
+                
+                <div id="episodes-container" class="episodes">
+                    <!-- Episodes will be populated here -->
+                </div>
+                
+                <div class="toggle-button">
+                    <button id="toggle-form">Add New Episode</button>
+                </div>
+                
+                <div id="add-form" class="add-form hidden">
+                    <h2>Add New Episode</h2>
+                    <div class="form-group">
+                        <label for="episode-name">Episode Name:</label>
+                        <input type="text" id="episode-name" placeholder="e.g. Keepy Uppy">
+                    </div>
+                    <div class="form-group">
+                        <label for="episode-url">YouTube URL:</label>
+                        <input type="url" id="episode-url" placeholder="https://www.youtube.com/watch?v=...">
+                    </div>
+                    <div class="form-group">
+                        <label for="episode-season">Season:</label>
+                        <input type="number" id="episode-season" min="1" max="3" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="episode-number">Episode Number:</label>
+                        <input type="number" id="episode-number" min="1" value="1">
+                    </div>
+                    <button id="save-episode">Save Episode</button>
+                </div>
+                
+                <div class="queue-section">
+                    <h2>Queue</h2>
+                    <div id="queue-container" class="queue-list">
+                        <div id="queue-items">
+                            <!-- Queue items will appear here -->
+                            <div class="empty-queue">No episodes in queue yet</div>
+                        </div>
+                    </div>
+                    <div class="queue-controls">
+                        <button id="clear-queue">Clear Queue</button>
+                        <button id="play-all">Play All Queued</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="player-section">
+                <h2>Player</h2>
+                <div id="player-container">
+                    <!-- YouTube player will be embedded here -->
+                    <div id="player"></div>
+                </div>
+                <div class="video-controls">
+                    <button id="prev-video" disabled>Previous</button>
+                    <button id="next-video">Next in Queue</button>
+                </div>
+                <div class="url-note">
+                    Note: If you find a working Bluey episode URL, add it using the "Add New Episode" form.
+                    <br>
+                    Try URL: <span id="sample-url">https://www.youtube.com/watch?v=3cRqQ3wSePU</span> <button id="copy-sample" style="padding: 2px 5px; font-size: 12px;">Copy</button>
                 </div>
             </div>
         </div>
@@ -197,10 +283,8 @@
         let blueyEpisodes = [
             // Verified working URL from screenshot
             { name: "Keepy Uppy", url: "https://www.youtube.com/watch?v=3cRqQ3wSePU", season: 1, episode: 7 },
-            
-            // Additional episodes - these are placeholders that should be verified
             { name: "The Adventure", url: "https://www.youtube.com/watch?v=M6tPWnqQoN8", season: 1, episode: 26 },
-            { name: "Octopus", url: "https://www.youtube.com/watch?v=ZE4cCTPI0-I", season: 2, episode: 30 },
+            // Additional episodes - these need to be verified and updated
             { name: "Grannies", url: "https://www.youtube.com/watch?v=UHiYUyUpBaw", season: 1, episode: 16 },
             { name: "Sticky Gecko", url: "https://www.youtube.com/watch?v=gsdXgZ91JEs", season: 1, episode: 25 },
             { name: "Takeaway", url: "https://www.youtube.com/watch?v=D_eZxItPw-A", season: 1, episode: 13 },
@@ -223,6 +307,12 @@
             currentQueue = JSON.parse(localStorage.getItem('blueyQueue'));
         }
         
+        // Current queue index
+        let currentQueueIndex = 0;
+        
+        // YouTube player
+        let player;
+        
         // DOM elements
         const episodesContainer = document.getElementById('episodes-container');
         const searchInput = document.getElementById('search-input');
@@ -233,6 +323,50 @@
         const queueItemsContainer = document.getElementById('queue-items');
         const clearQueueBtn = document.getElementById('clear-queue');
         const playAllBtn = document.getElementById('play-all');
+        const prevVideoBtn = document.getElementById('prev-video');
+        const nextVideoBtn = document.getElementById('next-video');
+        const copySampleBtn = document.getElementById('copy-sample');
+        
+        // Initialize YouTube API
+        function loadYouTubeAPI() {
+            // Load the YouTube IFrame Player API code asynchronously
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        }
+        
+        // Create YouTube player when API is ready
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '360',
+                width: '640',
+                videoId: extractVideoId(currentQueue.length > 0 ? currentQueue[0].url : ''),
+                playerVars: {
+                    'autoplay': 0,
+                    'controls': 1,
+                    'rel': 0,
+                    'fs': 1
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+        
+        // Player event handlers
+        function onPlayerReady(event) {
+            // Enable buttons if queue has videos
+            updateButtonState();
+        }
+        
+        function onPlayerStateChange(event) {
+            // Automatically play next video when current one ends
+            if (event.data == YT.PlayerState.ENDED) {
+                playNextVideo();
+            }
+        }
         
         // Display all episodes
         function displayEpisodes(episodes) {
@@ -246,6 +380,11 @@
             episodes.forEach(episode => {
                 const episodeEl = document.createElement('div');
                 episodeEl.className = 'episode';
+                // Check if in queue and add class
+                if (currentQueue.some(item => item.url === episode.url)) {
+                    episodeEl.classList.add('queued');
+                }
+                
                 // Add data attributes for easier reference
                 episodeEl.setAttribute('data-name', episode.name);
                 episodeEl.setAttribute('data-url', episode.url);
@@ -253,14 +392,13 @@
                 episodeEl.setAttribute('data-episode', episode.episode);
                 
                 // Create shortened URL for display
-                const urlObj = new URL(episode.url);
-                const videoId = urlObj.searchParams.get('v') || urlObj.pathname.split('/').pop();
-                const shortUrl = videoId ? `youtube.com/watch?v=${videoId}` : 'Unknown URL';
+                const videoId = extractVideoId(episode.url);
+                const shortUrl = videoId ? videoId : 'Unknown ID';
                 
                 episodeEl.innerHTML = `
                     <div class="episode-name">${episode.name}</div>
-                    <div class="episode-info">Season ${episode.season}, Episode ${episode.episode}</div>
-                    <div class="episode-url" title="${episode.url}">${shortUrl}</div>
+                    <div class="episode-info">S${episode.season}E${episode.episode}</div>
+                    <div class="episode-info">${shortUrl}</div>
                 `;
                 
                 episodeEl.addEventListener('click', () => {
@@ -269,12 +407,6 @@
                 
                 episodesContainer.appendChild(episodeEl);
             });
-            
-            // Add note about URL verification
-            const noteEl = document.createElement('div');
-            noteEl.className = 'url-note';
-            noteEl.innerHTML = 'Note: YouTube URLs may change over time. If an episode doesn\'t play, try updating its URL by using the "Add New Episode" form.';
-            episodesContainer.appendChild(noteEl);
         }
         
         // Filter episodes based on search and season
@@ -299,32 +431,180 @@
             displayEpisodes(filteredEpisodes);
         }
         
-        // Add episode to queue with URL validation
+        // Add episode to queue with validation
         function addToQueue(episode) {
             // Check if already in queue
             if (!currentQueue.some(item => item.url === episode.url)) {
-                // First check if the URL is valid by making a HEAD request
-                // Due to CORS restrictions, we can't actually check the URL directly in client-side JavaScript
-                // So we'll add a UI indicator to show we're trying to add it to the queue
-                
-                const episodeEl = document.querySelector(`.episode[data-url="${episode.url}"]`);
-                if (episodeEl) {
-                    episodeEl.classList.add('adding');
-                    setTimeout(() => {
-                        episodeEl.classList.remove('adding');
-                    }, 1000);
-                }
-                
-                // Add to queue
                 currentQueue.push(episode);
                 localStorage.setItem('blueyQueue', JSON.stringify(currentQueue));
                 updateQueueDisplay();
                 
-                // Show confirmation message
+                // Update episode display to show as queued
+                const episodeElements = document.querySelectorAll(`.episode[data-url="${episode.url}"]`);
+                episodeElements.forEach(el => el.classList.add('queued'));
+                
                 showMessage(`Added "${episode.name}" to queue`);
+                
+                // If this is the first item and player is ready, cue it
+                if (currentQueue.length === 1 && player && player.cueVideoById) {
+                    const videoId = extractVideoId(episode.url);
+                    if (videoId) {
+                        player.cueVideoById(videoId);
+                    }
+                }
+                
+                updateButtonState();
             } else {
                 showMessage(`"${episode.name}" is already in your queue`);
             }
+        }
+        
+        // Update queue display
+        function updateQueueDisplay() {
+            if (currentQueue.length === 0) {
+                queueItemsContainer.innerHTML = '<div class="empty-queue">No episodes in queue yet</div>';
+                return;
+            }
+            
+            queueItemsContainer.innerHTML = '';
+            
+            currentQueue.forEach((episode, index) => {
+                const queueItem = document.createElement('div');
+                queueItem.className = 'queue-item';
+                
+                // Highlight current playing item
+                if (index === currentQueueIndex && player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.ENDED) {
+                    queueItem.style.backgroundColor = '#BBDEFB';
+                }
+                
+                queueItem.innerHTML = `
+                    <div>
+                        <strong>${episode.name}</strong> (S${episode.season}E${episode.episode})
+                    </div>
+                    <div class="queue-actions">
+                        <button class="play-btn" data-index="${index}">Play</button>
+                        <button class="remove-btn" data-index="${index}">Remove</button>
+                    </div>
+                `;
+                queueItemsContainer.appendChild(queueItem);
+            });
+            
+            // Add event listeners to buttons
+            document.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Stop event bubbling
+                    const index = parseInt(e.target.getAttribute('data-index'));
+                    
+                    // Remove "queued" class from episode in list
+                    const removedEpisode = currentQueue[index];
+                    const episodeElements = document.querySelectorAll(`.episode[data-url="${removedEpisode.url}"]`);
+                    episodeElements.forEach(el => el.classList.remove('queued'));
+                    
+                    // Remove from queue
+                    currentQueue.splice(index, 1);
+                    
+                    // Update currentQueueIndex if needed
+                    if (index < currentQueueIndex) {
+                        currentQueueIndex--;
+                    } else if (index === currentQueueIndex) {
+                        // If we removed the currently playing video, stay at same index
+                        // which will now point to the next video
+                        if (currentQueueIndex >= currentQueue.length) {
+                            currentQueueIndex = Math.max(0, currentQueue.length - 1);
+                        }
+                    }
+                    
+                    localStorage.setItem('blueyQueue', JSON.stringify(currentQueue));
+                    updateQueueDisplay();
+                    updateButtonState();
+                });
+            });
+            
+            document.querySelectorAll('.play-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Stop event bubbling
+                    const index = parseInt(e.target.getAttribute('data-index'));
+                    currentQueueIndex = index;
+                    playCurrentVideo();
+                });
+            });
+        }
+        
+        // Play current video in queue
+        function playCurrentVideo() {
+            if (currentQueue.length === 0 || !player) {
+                return;
+            }
+            
+            if (currentQueueIndex >= currentQueue.length) {
+                currentQueueIndex = 0;
+            }
+            
+            const videoId = extractVideoId(currentQueue[currentQueueIndex].url);
+            if (videoId) {
+                player.loadVideoById(videoId);
+                showMessage(`Playing: ${currentQueue[currentQueueIndex].name}`);
+                updateQueueDisplay(); // Update to highlight current
+                updateButtonState();
+            } else {
+                showMessage("Error: Invalid video ID");
+            }
+        }
+        
+        // Play next video in queue
+        function playNextVideo() {
+            if (currentQueue.length <= 1) {
+                return;
+            }
+            
+            currentQueueIndex = (currentQueueIndex + 1) % currentQueue.length;
+            playCurrentVideo();
+        }
+        
+        // Play previous video in queue
+        function playPreviousVideo() {
+            if (currentQueue.length <= 1) {
+                return;
+            }
+            
+            currentQueueIndex = (currentQueueIndex - 1 + currentQueue.length) % currentQueue.length;
+            playCurrentVideo();
+        }
+        
+        // Update button states based on queue
+        function updateButtonState() {
+            if (currentQueue.length === 0) {
+                prevVideoBtn.disabled = true;
+                nextVideoBtn.disabled = true;
+                playAllBtn.disabled = true;
+                clearQueueBtn.disabled = true;
+            } else {
+                prevVideoBtn.disabled = currentQueue.length <= 1;
+                nextVideoBtn.disabled = currentQueue.length <= 1;
+                playAllBtn.disabled = false;
+                clearQueueBtn.disabled = false;
+            }
+        }
+        
+        // Play all queued videos
+        function playAllQueued() {
+            if (currentQueue.length === 0) {
+                showMessage("Your queue is empty. Add some episodes first!");
+                return;
+            }
+            
+            currentQueueIndex = 0;
+            playCurrentVideo();
+        }
+        
+        // Helper function to extract video ID from YouTube URL
+        function extractVideoId(url) {
+            if (!url) return '';
+            
+            // Handle different YouTube URL formats
+            const regExp = /^.*(youtu.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : '';
         }
         
         // Show user feedback messages
@@ -348,92 +628,6 @@
             }, duration);
         }
         
-        // Update queue display
-        function updateQueueDisplay() {
-            if (currentQueue.length === 0) {
-                queueItemsContainer.innerHTML = '<div class="empty-queue">No episodes in queue yet</div>';
-                return;
-            }
-            
-            queueItemsContainer.innerHTML = '';
-            
-            currentQueue.forEach((episode, index) => {
-                const queueItem = document.createElement('div');
-                queueItem.className = 'queue-item';
-                queueItem.innerHTML = `
-                    <div>
-                        <strong>${episode.name}</strong> (S${episode.season}E${episode.episode})
-                    </div>
-                    <button class="remove-btn" data-index="${index}">Remove</button>
-                `;
-                queueItemsContainer.appendChild(queueItem);
-            });
-            
-            // Add event listeners to remove buttons
-            document.querySelectorAll('.remove-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const index = parseInt(e.target.getAttribute('data-index'));
-                    currentQueue.splice(index, 1);
-                    localStorage.setItem('blueyQueue', JSON.stringify(currentQueue));
-                    updateQueueDisplay();
-                });
-            });
-        }
-        
-        // Play a YouTube video and add it to queue
-        function addToYouTubeQueue(url) {
-            // Add video to YouTube queue by modifying URL
-            // Using the proper YouTube queue parameter
-            const queueParam = '&list=WL'; // Watch Later
-            window.open(url, '_blank');
-        }
-        
-        // Play all videos in queue
-        function playAllInQueue() {
-            if (currentQueue.length === 0) {
-                showMessage("Your queue is empty. Add some episodes first!");
-                return;
-            }
-            
-            try {
-                // Create a YouTube playlist URL with all videos
-                let firstVideoId = extractVideoId(currentQueue[0].url);
-                if (!firstVideoId) {
-                    throw new Error("Invalid video ID in the first queue item");
-                }
-                
-                let playlistUrl = `https://www.youtube.com/watch?v=${firstVideoId}`;
-                
-                // Add remaining videos to the queue
-                if (currentQueue.length > 1) {
-                    for (let i = 1; i < currentQueue.length; i++) {
-                        let videoId = extractVideoId(currentQueue[i].url);
-                        if (videoId) {
-                            playlistUrl += `&v=${videoId}`;
-                        }
-                    }
-                }
-                
-                // Show message about opening videos
-                showMessage(`Opening ${currentQueue.length} videos in YouTube...`);
-                
-                // Open the playlist URL
-                window.open(playlistUrl, '_blank');
-                
-            } catch (error) {
-                showMessage("Error playing queue: " + error.message);
-                console.error("Error playing queue:", error);
-            }
-        }
-        
-        // Helper function to extract video ID from YouTube URL
-        function extractVideoId(url) {
-            // Handle different YouTube URL formats
-            const regExp = /^.*(youtu.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : null;
-        }
-        
         // Event listeners
         searchInput.addEventListener('input', filterEpisodes);
         seasonFilter.addEventListener('change', filterEpisodes);
@@ -452,7 +646,16 @@
             
             if (name && url && season && episode) {
                 const newEpisode = { name, url, season, episode };
-                blueyEpisodes.push(newEpisode);
+                
+                // Check if episode already exists
+                const existingIndex = blueyEpisodes.findIndex(e => e.url === url);
+                if (existingIndex >= 0) {
+                    blueyEpisodes[existingIndex] = newEpisode;
+                    showMessage(`Updated episode "${name}"`);
+                } else {
+                    blueyEpisodes.push(newEpisode);
+                    showMessage(`Added new episode "${name}"`);
+                }
                 
                 // Save to localStorage
                 localStorage.setItem('blueyEpisodes', JSON.stringify(blueyEpisodes));
@@ -468,21 +671,49 @@
                 addForm.classList.add('hidden');
                 toggleFormBtn.textContent = 'Add New Episode';
             } else {
-                alert('Please fill in all fields');
+                showMessage('Please fill in all fields');
             }
         });
         
         clearQueueBtn.addEventListener('click', () => {
+            // Remove "queued" class from all episodes
+            currentQueue.forEach(episode => {
+                const episodeElements = document.querySelectorAll(`.episode[data-url="${episode.url}"]`);
+                episodeElements.forEach(el => el.classList.remove('queued'));
+            });
+            
             currentQueue = [];
+            currentQueueIndex = 0;
             localStorage.setItem('blueyQueue', JSON.stringify(currentQueue));
             updateQueueDisplay();
+            updateButtonState();
+            
+            if (player && player.stopVideo) {
+                player.stopVideo();
+            }
+            
+            showMessage('Queue cleared');
         });
         
-        playAllBtn.addEventListener('click', playAllInQueue);
+        playAllBtn.addEventListener('click', playAllQueued);
+        prevVideoBtn.addEventListener('click', playPreviousVideo);
+        nextVideoBtn.addEventListener('click', playNextVideo);
         
-        // Initial display
+        copySampleBtn.addEventListener('click', () => {
+            const sampleUrl = document.getElementById('sample-url').textContent;
+            navigator.clipboard.writeText(sampleUrl)
+                .then(() => showMessage('URL copied to clipboard!'))
+                .catch(err => showMessage('Failed to copy URL'));
+        });
+        
+        // Initialize
+        loadYouTubeAPI();
         displayEpisodes(blueyEpisodes);
         updateQueueDisplay();
+        updateButtonState();
+        
+        // Make onYouTubeIframeAPIReady global so the API can call it
+        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
     </script>
 </body>
 </html>
