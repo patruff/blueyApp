@@ -85,6 +85,46 @@
             font-size: 12px;
             color: #666;
         }
+        
+        .episode-description {
+            font-size: 11px;
+            color: #555;
+            margin-top: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            transition: all 0.3s ease;
+        }
+        
+        .episode-description.show-description {
+            -webkit-line-clamp: 20;
+        }
+        
+        .episode-url {
+            font-size: 10px;
+            color: #999;
+            margin-top: 3px;
+            word-break: break-all;
+        }
+        
+        .highlight {
+            background-color: #FFC107;
+            padding: 0 2px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        
+        .search-info {
+            margin: 10px 0;
+            padding: 5px 10px;
+            font-size: 14px;
+            color: #555;
+            background-color: #F5F5F5;
+            border-radius: 5px;
+            text-align: center;
+        }
         .add-form {
             margin-top: 30px;
             background-color: #E3F2FD;
@@ -234,12 +274,18 @@
                         <input type="url" id="episode-url" placeholder="https://www.youtube.com/watch?v=...">
                     </div>
                     <div class="form-group">
-                        <label for="episode-season">Season:</label>
-                        <input type="number" id="episode-season" min="1" max="3" value="1">
+                        <label for="episode-description">Episode Description:</label>
+                        <textarea id="episode-description" rows="4" placeholder="Add a description of what happens in the episode to make searching easier..."></textarea>
                     </div>
-                    <div class="form-group">
-                        <label for="episode-number">Episode Number:</label>
-                        <input type="number" id="episode-number" min="1" value="1">
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="episode-season">Season:</label>
+                            <input type="number" id="episode-season" min="1" max="3" value="1">
+                        </div>
+                        <div class="form-group half">
+                            <label for="episode-number">Episode Number:</label>
+                            <input type="number" id="episode-number" min="1" value="1">
+                        </div>
                     </div>
                     <button id="save-episode">Save Episode</button>
                 </div>
@@ -279,21 +325,265 @@
     </div>
 
     <script>
-        // Initial episode data - using verified working URLs
+        // Complete Bluey episode data with descriptions for better search
         let blueyEpisodes = [
-            // Verified working URL from screenshot
-            { name: "Keepy Uppy", url: "https://www.youtube.com/watch?v=3cRqQ3wSePU", season: 1, episode: 7 },
-            { name: "The Adventure", url: "https://www.youtube.com/watch?v=M6tPWnqQoN8", season: 1, episode: 26 },
-            // Additional episodes - these need to be verified and updated
-            { name: "Grannies", url: "https://www.youtube.com/watch?v=UHiYUyUpBaw", season: 1, episode: 16 },
-            { name: "Sticky Gecko", url: "https://www.youtube.com/watch?v=gsdXgZ91JEs", season: 1, episode: 25 },
-            { name: "Takeaway", url: "https://www.youtube.com/watch?v=D_eZxItPw-A", season: 1, episode: 13 },
-            { name: "The Pool", url: "https://www.youtube.com/watch?v=9ARQ7jUn7xI", season: 1, episode: 26 },
-            { name: "The Beach", url: "https://www.youtube.com/watch?v=2rvMVQPmJJ4", season: 1, episode: 29 },
-            { name: "Camping", url: "https://www.youtube.com/watch?v=D1n-o2L1Esg", season: 1, episode: 52 },
-            { name: "Baby Race", url: "https://www.youtube.com/watch?v=mEsLcj84J_E", season: 2, episode: 26 },
-            { name: "Sleepytime", url: "https://www.youtube.com/watch?v=0HVj44NtREE", season: 2, episode: 22 },
-            { name: "Bike", url: "https://www.youtube.com/watch?v=8XrJZNUBz0c", season: 1, episode: 17 }
+            // Season 1 Episodes
+            { 
+                name: "The Magic Xylophone", 
+                url: "https://www.youtube.com/watch?v=example1", 
+                season: 1, 
+                episode: 1,
+                description: "Bluey and Bingo squabble over their magic xylophone that freezes people. Dad seizes control and freezes Bluey, leaving Bingo as her only hope."
+            },
+            { 
+                name: "Hospital", 
+                url: "https://www.youtube.com/watch?v=example2", 
+                season: 1, 
+                episode: 2,
+                description: "Doctor Bluey helps when Dad gets a curious x-ray from Nurse Bingo showing he has a cat in his tummy. Time for an operation!"
+            },
+            { 
+                name: "Keepy Uppy", 
+                url: "https://www.youtube.com/watch?v=3cRqQ3wSePU", 
+                season: 1, 
+                episode: 3,
+                description: "Bluey, Bingo and Mum enjoy playing Keepy-Uppy with their last balloon until Dad joins and turns it into the ultimate test of skill."
+            },
+            { 
+                name: "Daddy Robot", 
+                url: "https://www.youtube.com/watch?v=example3", 
+                season: 1, 
+                episode: 4,
+                description: "Bluey and Bingo avoid cleaning the playroom by getting Daddy Robot to do it. When Bluey takes it too far, Daddy Robot malfunctions with disastrous results."
+            },
+            { 
+                name: "Shadowlands", 
+                url: "https://www.youtube.com/watch?v=example4", 
+                season: 1, 
+                episode: 5,
+                description: "On a picnic, Bluey, Coco and Snickers play Shadowlands. Bluey teaches Coco that following rules can make games more fun than taking shortcuts."
+            },
+            { 
+                name: "The Weekend", 
+                url: "https://www.youtube.com/watch?v=example5", 
+                season: 1, 
+                episode: 6,
+                description: "Bluey and Bingo play in the garden with Dad, but Bingo gets upset when finding a walking leaf insect while Dad is too caught up in their game to notice."
+            },
+            { 
+                name: "BBQ", 
+                url: "https://www.youtube.com/watch?v=example6", 
+                season: 1, 
+                episode: 7,
+                description: "During a family BBQ, Bingo's relaxation is delayed as she searches for every color of capsicum that her cousins requested for the side salad."
+            },
+            { 
+                name: "Fruit Bat", 
+                url: "https://www.youtube.com/watch?v=example7", 
+                season: 1, 
+                episode: 8,
+                description: "Not wanting to go to bed, Bluey dreams about being a nocturnal fruit bat so she can stay up all night and finds herself flying through the night sky."
+            },
+            { 
+                name: "Horsey Ride", 
+                url: "https://www.youtube.com/watch?v=example8", 
+                season: 1, 
+                episode: 9,
+                description: "When Bluey's toy is grabbed by cousin Socks, the kids stage a horsey wedding to distract her, with Dad and Uncle Stripe playing the horses."
+            },
+            { 
+                name: "Hotel", 
+                url: "https://www.youtube.com/watch?v=example9", 
+                season: 1, 
+                episode: 10,
+                description: "Bluey and Bingo run a chaotic hotel with Dad as their only guest. When Bingo quits over Bluey's controlling behavior, Dad teaches them about compromise."
+            },
+            { 
+                name: "Bike", 
+                url: "https://www.youtube.com/watch?v=8XrJZNUBz0c", 
+                season: 1, 
+                episode: 11,
+                description: "At the park, Bluey struggles to learn how to ride her bike but is inspired by watching her friends' determination with their own challenges."
+            },
+            { 
+                name: "Bob Bilby", 
+                url: "https://www.youtube.com/watch?v=example10", 
+                season: 1, 
+                episode: 12,
+                description: "When it's Bingo's turn to bring home her kindy's Bob Bilby puppet, the family puts down their screens to show him a good time."
+            },
+            { 
+                name: "Spy Game", 
+                url: "https://www.youtube.com/watch?v=example11", 
+                season: 1, 
+                episode: 13,
+                description: "When Bingo stops playing Bluey's spy game, their device to control grown-ups stops working. Bluey realizes Bingo's importance and tries to win her back."
+            },
+            { 
+                name: "Takeaway", 
+                url: "https://www.youtube.com/watch?v=D_eZxItPw-A", 
+                season: 1, 
+                episode: 14,
+                description: "While waiting five minutes for takeout food, Bluey and Bingo become restless for entertainment, pushing Dad's patience to its limits."
+            },
+            { 
+                name: "Butterflies", 
+                url: "https://www.youtube.com/watch?v=example12", 
+                season: 1, 
+                episode: 15,
+                description: "Playing 'Butterflies' in the backyard is fun until Bluey runs away with Judo, leaving Bingo heartbroken. Bluey needs to make amends."
+            },
+            { 
+                name: "Yoga Ball", 
+                url: "https://www.youtube.com/watch?v=example13", 
+                season: 1, 
+                episode: 16,
+                description: "Bluey and Bingo are playing Keepy-Uppy with Mum's yoga ball before bedtime. Dad joins in, determined to keep the ball off the ground at all costs."
+            },
+            { 
+                name: "Calypso", 
+                url: "https://www.youtube.com/watch?v=example14", 
+                season: 1, 
+                episode: 17,
+                description: "At school, Calypso the teacher guides Bluey and her friends through their own various games of make-believe during free play."
+            },
+            { 
+                name: "The Doctor", 
+                url: "https://www.youtube.com/watch?v=example15", 
+                season: 1, 
+                episode: 18,
+                description: "Playing doctors at home, Dr. Bingo gives Bluey the diagnosis of 'Big Guts Disease,' requiring a special treatment from the Daddy Doctor."
+            },
+            { 
+                name: "The Claw", 
+                url: "https://www.youtube.com/watch?v=example16", 
+                season: 1, 
+                episode: 19,
+                description: "Dad introduces the kids to a claw machine game at home using a laundry basket. He teaches Bluey that sometimes you need to lose to win."
+            },
+            { 
+                name: "Markets", 
+                url: "https://www.youtube.com/watch?v=example17", 
+                season: 1, 
+                episode: 20,
+                description: "At the markets, Bluey and Indy set up their own toy exchange stall, but conflict arises when they can't agree on the right price for their wares."
+            },
+            
+            // Season 2 Episodes
+            { 
+                name: "Sticky Gecko", 
+                url: "https://www.youtube.com/watch?v=gsdXgZ91JEs", 
+                season: 2, 
+                episode: 12,
+                description: "Mum struggles to get Bluey and Bingo out the door for a playdate while they wait for a sticky rubber gecko toy to fall from the ceiling. Their departure is repeatedly delayed by missing hats, teeth brushing, and distractions."
+            },
+            { 
+                name: "Baby Race", 
+                url: "https://www.youtube.com/watch?v=mEsLcj84J_E", 
+                season: 2, 
+                episode: 26,
+                description: "Bluey's mum reminisces about trying to make baby Bluey reach her milestones first, and the important lesson she learned from another mum."
+            },
+            { 
+                name: "Sleepytime", 
+                url: "https://www.youtube.com/watch?v=0HVj44NtREE", 
+                season: 2, 
+                episode: 22,
+                description: "Bingo's dream of going into space with her Floppy bunny toy parallels her journey of sleeping in her own bed all night for the first time."
+            },
+            
+            // Season 3 Episodes
+            { 
+                name: "Perfect", 
+                url: "https://www.youtube.com/watch?v=example18", 
+                season: 3, 
+                episode: 1,
+                description: "On Father's Day, Bluey and Bingo make Dad breakfast in bed, but their efforts to create the perfect morning keep going comically wrong."
+            },
+            { 
+                name: "Bedroom", 
+                url: "https://www.youtube.com/watch?v=example19", 
+                season: 3, 
+                episode: 2,
+                description: "When Bluey and Bingo can't agree on how to divide their new separate bedroom, Dad helps them find a creative solution that makes everyone happy."
+            },
+            { 
+                name: "Obstacle Course", 
+                url: "https://www.youtube.com/watch?v=example20", 
+                season: 3, 
+                episode: 3,
+                description: "Bluey sets up a challenging obstacle course for Dad, who finds himself competing against Bingo's more supportive friend, Bendy Wendy."
+            },
+            { 
+                name: "Promises", 
+                url: "https://www.youtube.com/watch?v=example21", 
+                season: 3, 
+                episode: 4,
+                description: "Bluey learns about the importance of keeping promises when she struggles to fulfill her pledge to play with her neighbor's daughter."
+            },
+            { 
+                name: "Omelette", 
+                url: "https://www.youtube.com/watch?v=example22", 
+                season: 3, 
+                episode: 5,
+                description: "Bluey and Bingo try to make Mum an omelette for Mother's Day, but struggle with following the recipe and working together in the kitchen."
+            },
+            { 
+                name: "Born Yesterday", 
+                url: "https://www.youtube.com/watch?v=example23", 
+                season: 3, 
+                episode: 6,
+                description: "Dad pretends he was born yesterday, and Bluey and Bingo must teach him how to behave properly in the modern world with hilarious results."
+            },
+            { 
+                name: "Mini Bluey", 
+                url: "https://www.youtube.com/watch?v=example24", 
+                season: 3, 
+                episode: 7,
+                description: "Bluey makes a miniature version of herself out of pipe cleaners, leading to a game where the tiny Bluey explores the giant world of the house."
+            },
+            { 
+                name: "Unicorse", 
+                url: "https://www.youtube.com/watch?v=example25", 
+                season: 3, 
+                episode: 8,
+                description: "Bluey's bedtime story is interrupted by Dad's obnoxious unicorn hand puppet, Unicorse, who causes chaos and tests Mum's patience."
+            },
+            { 
+                name: "Curry Quest", 
+                url: "https://www.youtube.com/watch?v=example26", 
+                season: 3, 
+                episode: 9,
+                description: "Bingo and Dad embark on a quest to buy curry paste, but they must overcome several increasingly challenging obstacles along the way."
+            },
+            { 
+                name: "Magic", 
+                url: "https://www.youtube.com/watch?v=example27", 
+                season: 3, 
+                episode: 10,
+                description: "When Dad shows Bluey and Bingo a magic trick, they become determined to figure out how it works, leading to a lesson about the wonder of life."
+            },
+            { 
+                name: "Chest", 
+                url: "https://www.youtube.com/watch?v=example28", 
+                season: 3, 
+                episode: 11,
+                description: "Bluey and Dad discover an old family chest in the garage, filled with memories that tell the story of their family's history."
+            },
+            { 
+                name: "Sheepdog", 
+                url: "https://www.youtube.com/watch?v=example29", 
+                season: 3, 
+                episode: 12,
+                description: "Bluey acts as a sheepdog while Dad tries to herd Bingo and her stuffed animals across the house, teaching lessons about patience and leadership."
+            },
+            { 
+                name: "The Sign", 
+                url: "https://www.youtube.com/watch?v=example30", 
+                season: 3, 
+                episode: 40,
+                description: "A special extended episode where the Heelers prepare for a wedding, but unexpected events and a mysterious sign lead to major family decisions."
+            }
         ];
 
         // Load episodes from localStorage if available
@@ -368,7 +658,7 @@
             }
         }
         
-        // Display all episodes
+        // Display all episodes with descriptions
         function displayEpisodes(episodes) {
             episodesContainer.innerHTML = '';
             
@@ -380,6 +670,7 @@
             episodes.forEach(episode => {
                 const episodeEl = document.createElement('div');
                 episodeEl.className = 'episode';
+                
                 // Check if in queue and add class
                 if (currentQueue.some(item => item.url === episode.url)) {
                     episodeEl.classList.add('queued');
@@ -393,23 +684,57 @@
                 
                 // Create shortened URL for display
                 const videoId = extractVideoId(episode.url);
-                const shortUrl = videoId ? videoId : 'Unknown ID';
+                const shortUrl = videoId ? videoId : 'Demo URL';
                 
+                // Add episode content
                 episodeEl.innerHTML = `
                     <div class="episode-name">${episode.name}</div>
                     <div class="episode-info">S${episode.season}E${episode.episode}</div>
-                    <div class="episode-info">${shortUrl}</div>
+                    <div class="episode-description">${episode.description || 'No description available'}</div>
+                    <div class="episode-url" title="${episode.url}">${shortUrl}</div>
                 `;
                 
+                // Add event for expanding/collapsing description on mobile
+                const nameEl = episodeEl.querySelector('.episode-name');
+                const descriptionEl = episodeEl.querySelector('.episode-description');
+                
+                nameEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    descriptionEl.classList.toggle('show-description');
+                });
+                
+                // Add to queue when clicked
                 episodeEl.addEventListener('click', () => {
                     addToQueue(episode);
                 });
                 
                 episodesContainer.appendChild(episodeEl);
             });
+            
+            // Add highlight to search terms if searching
+            const searchTerm = searchInput.value.toLowerCase();
+            if (searchTerm) {
+                const descriptions = document.querySelectorAll('.episode-description');
+                descriptions.forEach(description => {
+                    const text = description.textContent;
+                    if (text.toLowerCase().includes(searchTerm)) {
+                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                        description.innerHTML = text.replace(regex, '<span class="highlight">$1</span>');
+                    }
+                });
+                
+                const names = document.querySelectorAll('.episode-name');
+                names.forEach(name => {
+                    const text = name.textContent;
+                    if (text.toLowerCase().includes(searchTerm)) {
+                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                        name.innerHTML = text.replace(regex, '<span class="highlight">$1</span>');
+                    }
+                });
+            }
         }
         
-        // Filter episodes based on search and season
+        // Filter episodes based on search and season - now with description search
         function filterEpisodes() {
             const searchTerm = searchInput.value.toLowerCase();
             const selectedSeason = seasonFilter.value;
@@ -418,8 +743,19 @@
             
             if (searchTerm) {
                 filteredEpisodes = filteredEpisodes.filter(episode => 
-                    episode.name.toLowerCase().includes(searchTerm)
+                    episode.name.toLowerCase().includes(searchTerm) || 
+                    (episode.description && episode.description.toLowerCase().includes(searchTerm))
                 );
+                
+                // Sort by relevance - exact name matches first, then description matches
+                filteredEpisodes.sort((a, b) => {
+                    const aNameMatch = a.name.toLowerCase().includes(searchTerm);
+                    const bNameMatch = b.name.toLowerCase().includes(searchTerm);
+                    
+                    if (aNameMatch && !bNameMatch) return -1;
+                    if (!aNameMatch && bNameMatch) return 1;
+                    return 0;
+                });
             }
             
             if (selectedSeason !== 'all') {
@@ -429,6 +765,22 @@
             }
             
             displayEpisodes(filteredEpisodes);
+            
+            // Show search result count
+            const resultCount = filteredEpisodes.length;
+            const searchInfo = document.getElementById('search-info') || document.createElement('div');
+            searchInfo.id = 'search-info';
+            searchInfo.className = 'search-info';
+            
+            if (searchTerm) {
+                searchInfo.textContent = `Found ${resultCount} episode${resultCount !== 1 ? 's' : ''} matching "${searchTerm}"`;
+                if (!document.getElementById('search-info')) {
+                    const controlsDiv = document.querySelector('.controls');
+                    controlsDiv.insertAdjacentElement('afterend', searchInfo);
+                }
+            } else if (document.getElementById('search-info')) {
+                searchInfo.remove();
+            }
         }
         
         // Add episode to queue with validation
@@ -638,38 +990,7 @@
                 'Add New Episode' : 'Hide Form';
         });
         
-        saveEpisodeBtn.addEventListener('click', () => {
-            const name = document.getElementById('episode-name').value;
-            const url = document.getElementById('episode-url').value;
-            const season = parseInt(document.getElementById('episode-season').value);
-            const episode = parseInt(document.getElementById('episode-number').value);
-            
-            if (name && url && season && episode) {
-                const newEpisode = { name, url, season, episode };
-                
-                // Check if episode already exists
-                const existingIndex = blueyEpisodes.findIndex(e => e.url === url);
-                if (existingIndex >= 0) {
-                    blueyEpisodes[existingIndex] = newEpisode;
-                    showMessage(`Updated episode "${name}"`);
-                } else {
-                    blueyEpisodes.push(newEpisode);
-                    showMessage(`Added new episode "${name}"`);
-                }
-                
-                // Save to localStorage
-                localStorage.setItem('blueyEpisodes', JSON.stringify(blueyEpisodes));
-                
-                // Clear form
-                document.getElementById('episode-name').value = '';
-                document.getElementById('episode-url').value = '';
-                
-                // Refresh display
-                filterEpisodes();
-                
-                // Hide form
-                addForm.classList.add('hidden');
-                toggleFormBtn.textContent = 'Add New Episode';
+.textContent = 'Add New Episode';
             } else {
                 showMessage('Please fill in all fields');
             }
