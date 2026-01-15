@@ -237,12 +237,88 @@
             border-radius: 5px;
             text-align: center;
         }
+        .youtube-auth {
+            background-color: #FFF9E5;
+            border: 2px solid #FFC107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .youtube-auth.connected {
+            background-color: #E8F5E9;
+            border-color: #4CAF50;
+        }
+        .youtube-auth h3 {
+            margin-top: 0;
+            color: #0081C6;
+        }
+        .auth-status {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .auth-button {
+            background-color: #FF0000;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .auth-button:hover {
+            background-color: #CC0000;
+        }
+        .auth-button.connected {
+            background-color: #4CAF50;
+        }
+        .auth-button.connected:hover {
+            background-color: #45a049;
+        }
+        .playlist-controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+        .playlist-name {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+        .info-box {
+            background-color: #E3F2FD;
+            border-left: 4px solid #0081C6;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Bluey Episode Manager</h1>
-        
+
+        <!-- YouTube Authentication Section -->
+        <div class="youtube-auth" id="youtube-auth">
+            <h3>YouTube Integration</h3>
+            <div class="auth-status" id="auth-status">
+                Connect your YouTube account to create playlists directly in YouTube
+            </div>
+            <button class="auth-button" id="auth-button">Connect YouTube Account</button>
+            <div class="playlist-controls hidden" id="playlist-controls">
+                <input type="text" class="playlist-name" id="playlist-name" placeholder="Bluey Watch Queue" value="Bluey Watch Queue">
+                <button class="button" id="create-playlist-btn">Create YouTube Playlist from Queue</button>
+            </div>
+            <div class="info-box hidden" id="api-info">
+                <strong>Note:</strong> You'll need to set up a Google Cloud API key. See README for instructions.
+            </div>
+        </div>
+
         <div class="main-content">
             <div class="episode-section">
                 <div class="controls">
@@ -325,6 +401,18 @@
     </div>
 
     <script>
+        // YouTube API Configuration
+        // IMPORTANT: Replace with your own API credentials
+        const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+        const API_KEY = 'YOUR_API_KEY';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.force-ssl';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let accessToken = null;
+
         // Complete Bluey episode data with descriptions for better search
         let blueyEpisodes = [
             // Season 1 Episodes
@@ -616,7 +704,181 @@
         const prevVideoBtn = document.getElementById('prev-video');
         const nextVideoBtn = document.getElementById('next-video');
         const copySampleBtn = document.getElementById('copy-sample');
-        
+        const authButton = document.getElementById('auth-button');
+        const authStatus = document.getElementById('auth-status');
+        const youtubeAuth = document.getElementById('youtube-auth');
+        const playlistControls = document.getElementById('playlist-controls');
+        const createPlaylistBtn = document.getElementById('create-playlist-btn');
+        const playlistNameInput = document.getElementById('playlist-name');
+        const apiInfo = document.getElementById('api-info');
+
+        // YouTube Data API Functions
+
+        /**
+         * Callback after Google API loads
+         */
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        /**
+         * Callback after the API client is loaded
+         */
+        async function initializeGapiClient() {
+            try {
+                await gapi.client.init({
+                    apiKey: API_KEY,
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                gapiInited = true;
+                maybeEnableButtons();
+            } catch (err) {
+                console.log('Error initializing GAPI:', err);
+                if (API_KEY === 'YOUR_API_KEY') {
+                    apiInfo.classList.remove('hidden');
+                }
+            }
+        }
+
+        /**
+         * Callback after Google Identity Services are loaded
+         */
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        /**
+         * Enables user interaction after all libraries have loaded
+         */
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                authButton.disabled = false;
+                if (CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
+                    apiInfo.classList.remove('hidden');
+                }
+            }
+        }
+
+        /**
+         * Sign in/out the user
+         */
+        function handleAuthClick() {
+            if (accessToken === null) {
+                // Request access token
+                tokenClient.callback = async (resp) => {
+                    if (resp.error !== undefined) {
+                        throw (resp);
+                    }
+                    accessToken = gapi.client.getToken();
+                    authButton.textContent = 'Sign Out';
+                    authButton.classList.add('connected');
+                    youtubeAuth.classList.add('connected');
+                    authStatus.textContent = '✓ Connected to YouTube';
+                    playlistControls.classList.remove('hidden');
+                    showMessage('Successfully connected to YouTube!');
+                };
+
+                if (gapi.client.getToken() === null) {
+                    // Prompt the user to select a Google Account and ask for consent
+                    tokenClient.requestAccessToken({prompt: 'consent'});
+                } else {
+                    // Skip display of account chooser and consent dialog
+                    tokenClient.requestAccessToken({prompt: ''});
+                }
+            } else {
+                // Sign out
+                accessToken = null;
+                gapi.client.setToken('');
+                google.accounts.oauth2.revoke(accessToken.access_token);
+                authButton.textContent = 'Connect YouTube Account';
+                authButton.classList.remove('connected');
+                youtubeAuth.classList.remove('connected');
+                authStatus.textContent = 'Connect your YouTube account to create playlists directly in YouTube';
+                playlistControls.classList.add('hidden');
+                showMessage('Disconnected from YouTube');
+            }
+        }
+
+        /**
+         * Create a YouTube playlist from the current queue
+         */
+        async function createYouTubePlaylist() {
+            if (!accessToken) {
+                showMessage('Please connect to YouTube first');
+                return;
+            }
+
+            if (currentQueue.length === 0) {
+                showMessage('Your queue is empty. Add some episodes first!');
+                return;
+            }
+
+            const playlistName = playlistNameInput.value || 'Bluey Watch Queue';
+
+            try {
+                showMessage('Creating YouTube playlist...');
+
+                // Create the playlist
+                const playlistResponse = await gapi.client.youtube.playlists.insert({
+                    part: 'snippet,status',
+                    resource: {
+                        snippet: {
+                            title: playlistName,
+                            description: `Bluey episodes queue created on ${new Date().toLocaleDateString()}`,
+                        },
+                        status: {
+                            privacyStatus: 'private' // Options: private, public, unlisted
+                        }
+                    }
+                });
+
+                const playlistId = playlistResponse.result.id;
+                let addedCount = 0;
+
+                // Add each video to the playlist
+                for (const episode of currentQueue) {
+                    const videoId = extractVideoId(episode.url);
+                    if (videoId && videoId !== 'Demo URL') {
+                        try {
+                            await gapi.client.youtube.playlistItems.insert({
+                                part: 'snippet',
+                                resource: {
+                                    snippet: {
+                                        playlistId: playlistId,
+                                        resourceId: {
+                                            kind: 'youtube#video',
+                                            videoId: videoId
+                                        }
+                                    }
+                                }
+                            });
+                            addedCount++;
+                        } catch (err) {
+                            console.log(`Failed to add ${episode.name}:`, err);
+                        }
+                    }
+                }
+
+                const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
+                showMessage(`✓ Created playlist "${playlistName}" with ${addedCount} videos! Opening in new tab...`, 5000);
+
+                // Open the playlist in a new tab
+                setTimeout(() => {
+                    window.open(playlistUrl, '_blank');
+                }, 1500);
+
+            } catch (err) {
+                console.error('Error creating playlist:', err);
+                showMessage('Error creating playlist. Check console for details.');
+            }
+        }
+
         // Initialize YouTube API
         function loadYouTubeAPI() {
             // Load the YouTube IFrame Player API code asynchronously
@@ -1026,7 +1288,11 @@
                 .then(() => showMessage('URL copied to clipboard!'))
                 .catch(err => showMessage('Failed to copy URL'));
         });
-        
+
+        // YouTube API event listeners
+        authButton.addEventListener('click', handleAuthClick);
+        createPlaylistBtn.addEventListener('click', createYouTubePlaylist);
+
         // Initialize
         loadYouTubeAPI();
         displayEpisodes(blueyEpisodes);
@@ -1035,6 +1301,12 @@
         
         // Make onYouTubeIframeAPIReady global so the API can call it
         window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+
+        // Make Google API callbacks global
+        window.gapiLoaded = gapiLoaded;
+        window.gisLoaded = gisLoaded;
     </script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
